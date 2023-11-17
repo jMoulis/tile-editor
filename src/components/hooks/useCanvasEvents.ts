@@ -111,7 +111,7 @@ export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElem
     }
   }, [isPanning, setCanvasViewState]);
 
-  const eraseTile = useCallback((event: MouseEvent) => {
+  const eraseTile = useCallback((_event: MouseEvent) => {
     setShouldRedraw(true);
   }, [setShouldRedraw]);
 

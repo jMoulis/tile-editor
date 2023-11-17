@@ -42,7 +42,7 @@ export const computeTexture = ({
   return newTexture
 };
 
-export const drawGrid = (canvas: HTMLCanvasElement, canvasView: CanvasViewState, gridElement: GridSize, tileSelected: Tile | null, rows: number, cols: number) => {
+export const drawGrid = (canvas: HTMLCanvasElement, canvasView: CanvasViewState, gridElement: GridSize, _tileSelected: Tile | null, rows: number, cols: number) => {
   const ctx = canvas.getContext('2d');
 
   if (!ctx) return;
