@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { GridSize, Tile } from '../types';
+import { GridSize } from '../Providers/types';
 import { useCanvasSelector } from '../Providers/useCanvasSelector';
 import { DEFAULT_ZOOM } from '../constants';
 import { drawGrid } from './drawingUtils';
 import { CanvasViewState, SelectedTexture, SourceCanvas } from './types';
 import { useCanvasEvents } from './useCanvasEvents';
 
-export const useCanvasGrid = (grid: GridSize, sourceCanvas: SourceCanvas) => {
+export const useCanvasGrid = (grid: GridSize, sourceCanvas: SourceCanvas, rows: number,
+  cols: number) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rectRef = useRef<DOMRect | null>(null);
 
@@ -15,7 +16,7 @@ export const useCanvasGrid = (grid: GridSize, sourceCanvas: SourceCanvas) => {
     translateX: 0,
     translateY: 0,
     lastMousePosition: { x: 0, y: 0 },
-    scaledTileSize: grid.tileSize * DEFAULT_ZOOM
+    scaledTileSize: grid.tileSize * DEFAULT_ZOOM,
   });
 
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
@@ -24,7 +25,6 @@ export const useCanvasGrid = (grid: GridSize, sourceCanvas: SourceCanvas) => {
 
   useCanvasEvents(canvasRef, canvasViewState, setShouldRedraw, sourceCanvas, rectRef, setCanvasViewState, grid)
 
-  const selectedTile: Tile = useCanvasSelector((state) => sourceCanvas === 'main' ? state.selectedMainCanvasTile : state.selectedSpritesheetTile);
   const selectedTextures: SelectedTexture[] = useCanvasSelector((state) => state.selectedTextures);
 
   const selectedSpritesheet = useCanvasSelector((state) => state.selectedSpritesheet);
@@ -79,15 +79,17 @@ export const useCanvasGrid = (grid: GridSize, sourceCanvas: SourceCanvas) => {
       ctx.drawImage(loadedImage, 0, 0);
     }
 
-    selectedTextures.forEach(texture => {
-      if (ctx && loadedImage) {
-        ctx.drawImage(loadedImage, texture.spriteX, texture.spriteY, texture.width, texture.height, texture.tileX, texture.tileY, texture.width, texture.height);
-      }
-    });
-    drawGrid(canvas, canvasViewState, grid, selectedTile);
+    if (sourceCanvas !== "spredsheetDisplay") {
+      selectedTextures.forEach(texture => {
+        if (ctx && loadedImage) {
+          ctx.drawImage(loadedImage, texture.spriteX, texture.spriteY, texture.width, texture.height, texture.tileX, texture.tileY, texture.width, texture.height);
+        }
+      });
+    }
+    drawGrid(canvas, canvasViewState, grid, null, rows, cols);
     ctx.restore();
     setShouldRedraw(false);
-  }, [shouldRedraw, canvasViewState, grid, selectedTile, loadedImage, sourceCanvas, selectedTextures]);
+  }, [shouldRedraw, canvasViewState, grid, loadedImage, sourceCanvas, selectedTextures, rows, cols]);
 
   useEffect(() => {
     if (!shouldRedraw) return;

@@ -1,6 +1,6 @@
 import { useCallback, useContext } from 'react';
 import { CanvasContext } from './CanvasContext';
-import { CanvasActions } from '../types';
+import { CanvasActions } from './types';
 
 export const useCanvasDispatch = () => {
   const context = useContext(CanvasContext);

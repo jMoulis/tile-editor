@@ -1,6 +1,6 @@
 import { useCallback, useContext } from 'react';
 import { CanvasContext } from './CanvasContext';
-import { CanvasState } from '../types';
+import { CanvasState } from './types';
 
 export const useCanvasSelector = (selector: (state: CanvasState) => any) => {
   const context = useContext(CanvasContext);

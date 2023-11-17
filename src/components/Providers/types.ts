@@ -1,4 +1,4 @@
-import { SelectedTexture } from "./hooks/types";
+import { SelectedTexture } from "../hooks/types";
 
 // Define a Tile interface
 export interface Tile {
@@ -20,11 +20,12 @@ export interface GridSize {
 export interface CanvasState {
   grid: GridSize,
   selectedMainCanvasTile: Tile | null;
-  selectedSpritesheetTile: Tile | null;
+  selectedSpritesheetTiles: Tile[];
   hoveredMainCanvasTile: Tile | null;
   hoveredSpritesheetTile: Tile | null;
   selectedSpritesheet: string | null;
   selectedTextures: SelectedTexture[];
+  pointer: PointerType | null;
 }
 
 
@@ -32,11 +33,14 @@ export interface CanvasState {
 export enum CanvasActionTypes {
   SET_GRID_SIZE = 'SET_GRID_SIZE',
   SELECT_MAIN_CANVAS_TILE = 'SELECT_MAIN_CANVAS_TILE',
-  SELECT_SPRITESHEET_TILE = 'SELECT_SPRITESHEET_TILE',
+  SELECT_SPRITESHEET_TILES = 'SELECT_SPRITESHEET_TILES',
   HOVER_MAIN_CANVAS_TILE = 'HOVER_MAIN_CANVAS_TILE',
   HOVER_SPRITESHEET_TILE = 'HOVER_SPRITESHEET_TILE',
   SET_SELECTED_SPRITESHEET = 'SET_SELECTED_SPRITESHEET',
-  SET_SELECTED_TEXTURE = 'SET_SELECTED_TEXTURE',
+  SET_SELECTED_TEXTURES = 'SET_SELECTED_TEXTURES',
+  ADD_TO_SELECTED_TEXTURES = 'ADD_TO_SELECTED_TEXTURES',
+  SET_SELECT_POINTER = 'SET_SELECT_POINTER',
+  ADD_TO_SELECTED_SPRITESHEET_TILES = 'ADD_TO_SELECTED_SPRITESHEET_TILES',
 }
 
 // Define Action interfaces for each action
@@ -50,8 +54,12 @@ interface SelectMainCanvasTileAction {
   payload: Tile;
 }
 
-interface SelectSpritesheetTileAction {
-  type: typeof CanvasActionTypes.SELECT_SPRITESHEET_TILE;
+interface SelectSpritesheetTilesAction {
+  type: typeof CanvasActionTypes.SELECT_SPRITESHEET_TILES;
+  payload: Tile[];
+}
+interface AddSelectedSpriteSheetTileAction {
+  type: typeof CanvasActionTypes.ADD_TO_SELECTED_SPRITESHEET_TILES;
   payload: Tile;
 }
 
@@ -60,16 +68,28 @@ interface SelectedSpritesheetAction {
   payload: string;
 }
 interface SelectedTextureAction {
-  type: typeof CanvasActionTypes.SET_SELECTED_TEXTURE;
+  type: typeof CanvasActionTypes.SET_SELECTED_TEXTURES;
+  payload: SelectedTexture[];
+}
+interface AddToSelectedTextureAction {
+  type: typeof CanvasActionTypes.ADD_TO_SELECTED_TEXTURES;
   payload: SelectedTexture;
+}
+interface SelectedPointerAction {
+  type: typeof CanvasActionTypes.SET_SELECT_POINTER;
+  payload: PointerType;
 }
 
 // Union type for all possible actions
 export type CanvasActions =
   | SetGridSizeSizeAction
   | SelectMainCanvasTileAction
-  | SelectSpritesheetTileAction
+  | SelectSpritesheetTilesAction
   | SelectedSpritesheetAction
-  | SelectedTextureAction;
+  | SelectedTextureAction
+  | SelectedPointerAction
+  | AddSelectedSpriteSheetTileAction
+  | AddToSelectedTextureAction;
 
 
+export type PointerType = 'eraser' | 'brush';

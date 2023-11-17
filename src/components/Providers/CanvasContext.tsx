@@ -1,17 +1,18 @@
 import { createContext, useReducer } from 'react';
 import { canvasReducer } from './canvasReducer';
-import { CanvasActions, CanvasState } from '../types';
+import { CanvasActions, CanvasState } from './types';
 import { DEFAULT_MAP_SIZE } from '../constants';
 import defaultSpritesheet from '../../assets/Overworld.png';
 
 const initialState: CanvasState = {
   grid: DEFAULT_MAP_SIZE,
   selectedMainCanvasTile: null,
-  selectedSpritesheetTile: null,
+  selectedSpritesheetTiles: [],
   hoveredMainCanvasTile: null,
   hoveredSpritesheetTile: null,
   selectedSpritesheet: defaultSpritesheet,
   selectedTextures: [],
+  pointer: 'brush',
 };
 
 const defaultCanvasContext: {
