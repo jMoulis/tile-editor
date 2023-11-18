@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
-import { computeSelectedTile, computeTexture } from "./drawingUtils";
+import { computeSelectedTile } from "./drawingUtils";
 import { CanvasViewState, SourceCanvas } from "./types";
 import { useCanvasDispatch } from "../Providers/useCanvasDispatch";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_SENSITIVITY } from "../constants";
-import { addToSelectedSpriteSheetTilesAction, addToSelectedTexturesAction, setSelectedSpriteSheetTilesAction } from "../Providers/actions";
+import { upsertTileToLayerAction, addTilesetAction, addToSelectedSpriteSheetTilesAction, setActivePointerTypeAction, setSelectedSpriteSheetTilesAction } from "../Providers/actions";
 import { useCanvasSelector } from "../Providers/useCanvasSelector";
-import { GridSize, PointerType, Tile } from "../Providers/types";
+import { GridSize, Layer, Placement, PointerType, Tile, TilePlacement, Tileset } from "../Providers/types";
 
 export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElement | null>, canvasViewState: CanvasViewState, setShouldRedraw: (value: boolean) => void, sourceCanvas: SourceCanvas, rectRef: React.MutableRefObject<DOMRect | null>, setCanvasViewState: React.Dispatch<React.SetStateAction<CanvasViewState>>, grid: GridSize) => {
   const dispatch = useCanvasDispatch();
-  const selectedTileFromSpritesheets = useCanvasSelector((state) => state.selectedSpritesheetTiles);
+  const selectedTileFromSpritesheets: Tile[] = useCanvasSelector((state) => state.selectedSpritesheetTiles);
+
+  const selectedLayer: Layer | null = useCanvasSelector((state) => state.selectedLayerIndex ? state.layers[state.selectedLayerIndex] : null);
+
+  const selectedSpritesheetTileset: Tileset | null = useCanvasSelector((state) =>
+    state.selectedSpritesheetID
+      ? state.spriteSheets.find(
+        (prev) => prev.id === state.selectedSpritesheetID
+      )?.tileset
+      : null
+  );
 
   const [isPanning, setIsPanning] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -18,42 +28,75 @@ export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElem
 
   const addBrushStroke = useCallback((event: MouseEvent) => {
     if (isPanning || sourceCanvas !== 'main') return;
+    if (!selectedSpritesheetTileset) return null;
+    if (!selectedLayer) return null;
+
     const rect = rectRef?.current;
     if (!rect || !selectedTileFromSpritesheets.length) return;
 
-    const baseTexture = computeTexture({
-      client: { x: event.clientX, y: event.clientY },
-      rect, grid, canvasViewState,
-      selectedSprite: selectedTileFromSpritesheets[0]
-    });
+    const baseTileCoords: Placement = computeSelectedTile(event, rect, canvasViewState, grid.tileSize);
+
+    const baseTile = selectedTileFromSpritesheets[0];
+    const baseTileOffsetX = baseTile.x;
+    const baseTileOffsetY = baseTile.y;
 
     selectedTileFromSpritesheets.forEach((selectedTile: Tile) => {
-      const offsetCol = selectedTile.col - baseTexture.spriteX / grid.tileSize;
-      const offsetRow = selectedTile.row - baseTexture.spriteY / grid.tileSize;
+      const offsetCol = selectedTile.x - baseTileOffsetX;
+      const offsetRow = selectedTile.y - baseTileOffsetY;
 
-      const newTexture = { ...baseTexture };
-      newTexture.tileX += offsetCol * grid.tileSize;
-      newTexture.tileY += offsetRow * grid.tileSize;
-      newTexture.spriteX = selectedTile.col * grid.tileSize;
-      newTexture.spriteY = selectedTile.row * grid.tileSize;
+      const canvasX = (baseTileCoords.x + offsetCol) * grid.tileSize;
+      const canvasY = (baseTileCoords.y + offsetRow) * grid.tileSize;
 
-      dispatch(addToSelectedTexturesAction(newTexture));
+      const tilePlacement: TilePlacement = {
+        x: canvasX / grid.tileSize,
+        y: canvasY / grid.tileSize,
+        pixelX: canvasX,
+        pixelY: canvasY,
+        tileId: selectedTile.tileId,
+        tilesetId: selectedTile.tilesetId
+      };
+
+      dispatch(upsertTileToLayerAction(tilePlacement, selectedLayer.id, pointer === 'eraser'));
     });
-
     setShouldRedraw(true);
-  }, [isPanning, sourceCanvas, rectRef, selectedTileFromSpritesheets, grid, canvasViewState, setShouldRedraw, dispatch]);
+  }, [isPanning, sourceCanvas, selectedSpritesheetTileset, selectedLayer, rectRef, selectedTileFromSpritesheets, canvasViewState, grid.tileSize, setShouldRedraw, dispatch, pointer]);
 
-  const handleTileSelect = useCallback((event: MouseEvent) => {
-    if (isPanning) return;
+  const canDraw = useCallback((event: MouseEvent) => {
     const rect = rectRef?.current;
     if (!rect) return;
 
-    const tile: Tile = computeSelectedTile(event, rect, canvasViewState);
+    const gridWidth = grid.cols * grid.tileSize;
+    const gridHeight = grid.rows * grid.tileSize;
+
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    if (clickX < 0 || clickX > gridWidth || clickY < 0 || clickY > gridHeight) {
+      return false;
+    }
+    return true;
+  }, [grid.cols, grid.rows, grid.tileSize, rectRef])
+  const handleTileSelect = useCallback((event: MouseEvent) => {
+    if (isPanning) return;
+    if (!selectedLayer) return;
+
+    const rect = rectRef?.current;
+    if (!rect) return;
+
+
+    if (!canDraw(event)) return;
+
     const isMultiSelect = event.metaKey || event.ctrlKey;
 
     if (sourceCanvas === 'main') {
       addBrushStroke(event);
     } else {
+      if (!selectedSpritesheetTileset) return null;
+      const tilePlacement: Placement = computeSelectedTile(event, rect, canvasViewState, grid.tileSize);
+      const tile = Object.values(selectedSpritesheetTileset.tiles).find((item) => item.x === tilePlacement.x && item.y === tilePlacement.y);
+      if (!tile) return;
+      dispatch(setActivePointerTypeAction('brush'));
+      dispatch(addTilesetAction(selectedSpritesheetTileset));
       if (isMultiSelect) {
         dispatch(addToSelectedSpriteSheetTilesAction(tile));
       } else {
@@ -61,7 +104,7 @@ export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElem
       }
     }
     setShouldRedraw(true);
-  }, [isPanning, rectRef, canvasViewState, sourceCanvas, setShouldRedraw, addBrushStroke, dispatch]);
+  }, [isPanning, selectedLayer, rectRef, canDraw, sourceCanvas, setShouldRedraw, addBrushStroke, selectedSpritesheetTileset, canvasViewState, grid.tileSize, dispatch]);
 
   const handleZoom = useCallback((event: WheelEvent) => {
     if (event.metaKey || event.ctrlKey) {
@@ -111,22 +154,10 @@ export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElem
     }
   }, [isPanning, setCanvasViewState]);
 
-  const eraseTile = useCallback((_event: MouseEvent) => {
-    setShouldRedraw(true);
-  }, [setShouldRedraw]);
-
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (isMouseDown) {
-      switch (pointer) {
-        case 'brush':
-          addBrushStroke(event);
-          break;
-        case 'eraser':
-          eraseTile(event);
-          break;
-        default:
-        // Handle other pointer types or default behavior
-      }
+      if (!canDraw(event)) return;
+      addBrushStroke(event);
       if (isPanning) {
         const dx = event.clientX - canvasViewState.lastMousePosition.x;
         const dy = event.clientY - canvasViewState.lastMousePosition.y;
@@ -139,7 +170,7 @@ export const useCanvasEvents = (canvasRef: React.MutableRefObject<HTMLCanvasElem
         }));
       }
     }
-  }, [isMouseDown, pointer, isPanning, addBrushStroke, eraseTile, canvasViewState.lastMousePosition.x, canvasViewState.lastMousePosition.y, setShouldRedraw, setCanvasViewState]);
+  }, [isMouseDown, canDraw, addBrushStroke, isPanning, canvasViewState.lastMousePosition.x, canvasViewState.lastMousePosition.y, setShouldRedraw, setCanvasViewState]);
 
   const handleMouseUp = useCallback(() => {
     setIsMouseDown(false);

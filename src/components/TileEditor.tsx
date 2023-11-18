@@ -1,8 +1,9 @@
 import styled from '@emotion/styled';
-import { LeftPanel } from './LeftPanel';
+import { LeftPanel } from './Panels/LeftPanel';
 import { CanvasScene } from './CanvasScene';
-import { RightPanel } from './RightPanel';
+import { RightPanel } from './Panels/RightPanel';
 import { CanvasProvider } from './Providers/CanvasContext';
+import { Toolbar } from './Toolbar';
 
 const Root = styled.div`
   height: 100vh;
@@ -15,6 +16,7 @@ const Root = styled.div`
 export const TileEditor = () => {
   return (
     <CanvasProvider>
+      <Toolbar />
       <Root>
         <LeftPanel />
         <CanvasScene />

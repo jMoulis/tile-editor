@@ -8,12 +8,3 @@ export interface CanvasViewState {
   scaledTileSize: number;
 }
 export type SourceCanvas = 'main' | 'spredsheetDisplay';
-
-export interface SelectedTexture {
-  tileX: number; // X position on the main canvas
-  tileY: number; // Y position on the main canvas
-  spriteX: number; // X position on the sprite sheet
-  spriteY: number; // Y position on the sprite sheet
-  width: number; // Width of the tile
-  height: number; // Height of the tile
-}

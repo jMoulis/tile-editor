@@ -1,48 +1,25 @@
-import { Coords, GridSize, Tile } from "../Providers/types";
-import { CanvasViewState, SelectedTexture } from "./types";
+import { v4 } from "uuid";
+import { GridSize, Tile, Placement, Tileset, TilePlacement } from "../Providers/types";
+import { CanvasViewState } from "./types";
 
-export const computeSelectedTile = (event: MouseEvent, rect: DOMRect, canvasViewState: CanvasViewState) => {
+export const computeSelectedTile = (event: MouseEvent, rect: DOMRect, canvasViewState: CanvasViewState, tileSize: number): Placement => {
+
   const { translateX, translateY, scaledTileSize } = canvasViewState;
   const x = event.clientX - rect.left - translateX;
   const y = event.clientY - rect.top - translateY;
-  const col = Math.floor(x / scaledTileSize);
-  const row = Math.floor(y / scaledTileSize);
-  const tile: Tile = {
-    col,
-    row
-  }
-  return tile;
+  const newX = Math.floor(x / scaledTileSize);
+  const newY = Math.floor(y / scaledTileSize);
+
+  return {
+    x: newX,
+    y: newY,
+    pixelX: newX * tileSize,
+    pixelY: newY * tileSize
+  };
 }
 
-export const computeTexture = ({
-  client, rect, grid, canvasViewState, selectedSprite
-}: {
-  client: Coords,
-  canvasViewState: CanvasViewState,
-  grid: GridSize,
-  rect: DOMRect
-  selectedSprite: Tile
-}) => {
-  const { translateX, translateY, zoomLevel } = canvasViewState;
 
-  const adjustedX = (client.x - rect.left - translateX) / zoomLevel;
-  const adjustedY = (client.y - rect.top - translateY) / zoomLevel;
-
-  const col = Math.floor(adjustedX / grid.tileSize);
-  const row = Math.floor(adjustedY / grid.tileSize);
-
-  const newTexture: SelectedTexture = {
-    tileX: col * grid.tileSize,
-    tileY: row * grid.tileSize,
-    spriteX: selectedSprite.col * grid.tileSize,
-    spriteY: selectedSprite.row * grid.tileSize,
-    width: grid.tileSize,
-    height: grid.tileSize,
-  };
-  return newTexture
-};
-
-export const drawGrid = (canvas: HTMLCanvasElement, canvasView: CanvasViewState, gridElement: GridSize, _tileSelected: Tile | null, rows: number, cols: number) => {
+export const drawGrid = (canvas: HTMLCanvasElement, canvasView: CanvasViewState, gridElement: GridSize, rows: number, cols: number, selectedTileIdsFromSpritesheets: Tile[] | TilePlacement[]) => {
   const ctx = canvas.getContext('2d');
 
   if (!ctx) return;
@@ -60,17 +37,59 @@ export const drawGrid = (canvas: HTMLCanvasElement, canvasView: CanvasViewState,
       ctx.strokeStyle = 'rgba(0,0,0,0.2)';
       ctx.lineWidth = 0.5;
       ctx.strokeRect(x, y, gridElement.tileSize, gridElement.tileSize);
+      const isSelected = selectedTileIdsFromSpritesheets.some((tile) => tile.x === col && tile.y === row);
 
-      // if (tileSelected && tileSelected.col === col && tileSelected.row === row) {
-      //   ctx.strokeStyle = 'red';
-      //   ctx.lineWidth = 2;
-      //   ctx.strokeRect(x, y, gridElement.tileSize, gridElement.tileSize);
-      // }
+      if (isSelected) {
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, gridElement.tileSize, gridElement.tileSize);
+      }
       // Draw coordinates
       ctx.font = "7px Arial";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // ctx.fillText(`${col},${row}`, x + gridElement.tileSize / 2, y + gridElement.tileSize / 2);
+      ctx.fillText(`${col},${row}`, x + gridElement.tileSize / 2, y + gridElement.tileSize / 2);
     }
   }
+};
+
+
+export const preComputeTileset = (image: HTMLImageElement, tileSize: number): Tileset => {
+
+  // Assuming the image is already loaded before this function is called
+  const rows = Math.ceil(image.height / tileSize);
+  const cols = Math.ceil(image.width / tileSize);
+
+  const tiles: Tile[] = [];
+
+  const tilesetId = v4();
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      tiles.push({
+        tileId: v4(),
+        tilesetId,
+        x: col,
+        y: row,
+        pixelX: col * tileSize,
+        pixelY: row * tileSize,
+        width: tileSize,
+        height: tileSize,
+        properties: {}
+      });
+    }
+  }
+
+
+  return {
+    id: tilesetId,
+    name: `Tileset: ${tilesetId.substring(0, 5)}`, // Update as appropriate
+    image: image.src,
+    tileWidth: tileSize,
+    tileHeight: tileSize,
+    tiles: tiles.reduce((acc: { [tileId: string]: Tile }, tile) => ({
+      ...acc,
+      [tile.tileId]: tile
+    }), {})
+  };
 };
